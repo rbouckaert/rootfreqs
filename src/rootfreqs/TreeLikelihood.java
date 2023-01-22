@@ -1,0 +1,243 @@
+package rootfreqs;
+
+import java.util.List;
+
+import beast.base.core.Description;
+import beast.base.core.Input;
+import beast.base.evolution.alignment.Sequence;
+import beast.base.evolution.datatype.DataType;
+import beast.base.evolution.tree.Node;
+import beast.base.evolution.tree.Tree;
+
+@Description("Tree-likelihood that allows site specific root frequencies")
+public class TreeLikelihood extends beast.base.evolution.likelihood.TreeLikelihood {
+
+	final public Input<Sequence> rootSequenceInput = new Input<>("rootfreqs", 
+			  "If defined, specifies site specific root frequencies instead of uniform root frequencies. "
+			+ "If it is a standard sequence, root frequencies will be set at 1 for the observed value in the sequence "
+			+ "(or uniform if an ambiguous value) and all other frequencies will be set at 0. "
+			+ "If the sequence is uncertain, each site represents a root frequencies distribution over all states.");
+
+	private double [][] rootFrequencies;
+	private int siteCount, stateCount;
+
+
+	@Override
+	public void initAndValidate() {
+		super.initAndValidate();
+		
+		
+		if (rootSequenceInput.get() != null) { 
+			initRootFrequencies();
+			
+			// sanity check
+			if (siteCount != rootFrequencies.length) {
+				throw new IllegalArgumentException("root sequence length differs from alignment length");
+			}
+			
+			// 
+			patternLogLikelihoods = new double[siteCount];
+
+		} else {
+			rootFrequencies = null;
+		}
+	}
+	
+	
+
+	private void initRootFrequencies() {
+		Sequence seq = rootSequenceInput.get();
+		stateCount = seq.totalCountInput.get();
+		siteCount = dataInput.get().getSiteCount();
+
+		// deal with uncertain root sequence first
+		if (seq.uncertainInput.get()) {
+			rootFrequencies = seq.getLikelihoods();
+			return;
+		}
+		
+		// it is an ordinairy sequence, not an uncertain one
+		// todo: test for ambiguous codes
+		rootFrequencies = new double[siteCount][stateCount];
+		DataType dataType = dataInput.get().getDataType();
+		List<Integer> values = seq.getSequence(dataType);
+		for (int i = 0; i < siteCount; i++) {
+			int [] state = dataType.getStatesForCode(values.get(i));
+			for (int j : state) {
+				rootFrequencies[i][j] = 1.0/state.length;
+			}	
+		}
+	}
+
+	
+	@Override
+	public double calculateLogP() {
+        if (beagle != null) {
+            logP = beagle.calculateLogP();
+            if (rootFrequencies != null) {
+            	logP = recalculateBeagleLogPWithRootFrequences();
+            }
+            return logP;
+        }
+        logP = super.calculateLogP();;
+		return logP;
+	}	
+
+
+	private double recalculateBeagleLogPWithRootFrequences() {
+		double [] rootpartials = beagle.getRootPartials();
+        for (int k = 0; k < siteCount; k++) {
+        	int j = dataInput.get().getPatternIndex(k);
+        	int v = j * stateCount;
+            double sum = 0.0;
+            for (int i = 0; i < stateCount; i++) {
+
+                sum += rootFrequencies[k][i] * rootpartials[v];
+                v++;
+            }
+            // TODO: deal with scaling           
+            patternLogLikelihoods[k] = Math.log(sum) + beagle.getLogScalingFactor(j);
+        }
+		calcLogP();
+		return logP;
+	}
+
+	
+    protected void calcLogP() {
+    	if (rootFrequencies != null) {
+            logP = 0.0;
+            for (int i = 0; i < siteCount; i++) {
+                logP += patternLogLikelihoods[i];
+            }
+            if (useAscertainedSitePatterns) {
+                // at this point, logP contains contributions of ascertained sites, which it should not have.
+                final double ascertainmentCorrection = dataInput.get().getAscertainmentCorrection(patternLogLikelihoods);
+                
+                int totalPatternWeight = 0;
+                for (int i = 0; i < dataInput.get().getPatternCount(); i++) {
+                	totalPatternWeight += dataInput.get().getPatternWeight(i);
+                }
+            	// TODO: test this
+                // here, we subtract ascertainmentCorrection once for each site that should contribute to the likelihood (i.e. non-ascertaining sites)
+                // and subtract the ascertainmentCorrection for the ascertaining sites already accumulated in logP above 
+                logP +=  -ascertainmentCorrection * (totalPatternWeight + 1);
+            }
+    		
+    	} else {
+    		super.calcLogP();
+    	}
+    }
+
+	
+
+	@Override
+	protected int traverse(Node node) {
+        int update = (node.isDirty() | hasDirt);
+
+        final int nodeIndex = node.getNr();
+
+        final double branchRate = branchRateModel.getRateForBranch(node);
+        final double branchTime = node.getLength() * branchRate;
+
+        // First update the transition probability matrix(ices) for this branch
+        //if (!node.isRoot() && (update != Tree.IS_CLEAN || branchTime != m_StoredBranchLengths[nodeIndex])) {
+        if (!node.isRoot() && (update != Tree.IS_CLEAN || branchTime != m_branchLengths[nodeIndex])) {
+            m_branchLengths[nodeIndex] = branchTime;
+            final Node parent = node.getParent();
+            likelihoodCore.setNodeMatrixForUpdate(nodeIndex);
+            for (int i = 0; i < m_siteModel.getCategoryCount(); i++) {
+                final double jointBranchRate = m_siteModel.getRateForCategory(i, node) * branchRate;
+                substitutionModel.getTransitionProbabilities(node, parent.getHeight(), node.getHeight(), jointBranchRate, probabilities);
+                //System.out.println(node.getNr() + " " + Arrays.toString(m_fProbabilities));
+                likelihoodCore.setNodeMatrix(nodeIndex, i, probabilities);
+            }
+            update |= Tree.IS_DIRTY;
+        }
+
+        // If the node is internal, update the partial likelihoods.
+        if (!node.isLeaf()) {
+
+            // Traverse down the two child nodes
+            final Node child1 = node.getLeft(); //Two children
+            final int update1 = traverse(child1);
+
+            final Node child2 = node.getRight();
+            final int update2 = traverse(child2);
+
+            // If either child node was updated then update this node too
+            if (update1 != Tree.IS_CLEAN || update2 != Tree.IS_CLEAN) {
+
+                final int childNum1 = child1.getNr();
+                final int childNum2 = child2.getNr();
+
+                likelihoodCore.setNodePartialsForUpdate(nodeIndex);
+                update |= (update1 | update2);
+                if (update >= Tree.IS_FILTHY) {
+                    likelihoodCore.setNodeStatesForUpdate(nodeIndex);
+                }
+
+                if (m_siteModel.integrateAcrossCategories()) {
+                    likelihoodCore.calculatePartials(childNum1, childNum2, nodeIndex);
+                } else {
+                    throw new RuntimeException("Error TreeLikelihood 201: Site categories not supported");
+                    //m_pLikelihoodCore->calculatePartials(childNum1, childNum2, nodeNum, siteCategories);
+                }
+
+                if (node.isRoot()) {
+                    // No parent this is the root of the beast.tree -
+                    // calculate the pattern likelihoods
+
+                    final double[] proportions = m_siteModel.getCategoryProportions(node);
+                    likelihoodCore.integratePartials(node.getNr(), proportions, m_fRootPartials);
+
+                    if (getConstantPattern() != null) { // && !SiteModel.g_bUseOriginal) {
+                        proportionInvariant = m_siteModel.getProportionInvariant();
+                        // some portion of sites is invariant, so adjust root partials for this
+                        for (final int i : getConstantPattern()) {
+                            m_fRootPartials[i] += proportionInvariant;
+                        }
+                    }
+
+                    if (this.rootFrequencies != null) {
+                    	// use site specific root frequencies
+                    	calculateLogLikelihoods(m_fRootPartials, this.rootFrequencies, patternLogLikelihoods);
+                    } else {
+                    	double[] rootFrequencies = substitutionModel.getFrequencies();
+                    	if (rootFrequenciesInput.get() != null) {
+                    		rootFrequencies = rootFrequenciesInput.get().getFreqs();
+                    	}
+                    	likelihoodCore.calculateLogLikelihoods(m_fRootPartials, rootFrequencies, patternLogLikelihoods);
+                    }
+                }
+
+            }
+        }
+        return update;
+    } // traverse
+	
+
+	private void calculateLogLikelihoods(
+			double[] partials, 
+			double[][] rootFrequencies,
+			double[] outLogLikelihoods) {
+        for (int k = 0; k < siteCount; k++) {
+        	int j = dataInput.get().getPatternIndex(k);
+        	int v = j * stateCount;
+            double sum = 0.0;
+            for (int i = 0; i < stateCount; i++) {
+
+                sum += rootFrequencies[k][i] * partials[v];
+                v++;
+            }
+            outLogLikelihoods[k] = Math.log(sum) + getLikelihoodCore().getLogScalingFactor(j);
+        }
+	}
+
+
+
+	@Override
+	// defined here to provide access for rootfreqs.ThreaderTreeLikelihood
+	protected boolean requiresRecalculation() {
+		return super.requiresRecalculation();
+	}
+}
