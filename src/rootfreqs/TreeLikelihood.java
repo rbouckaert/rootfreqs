@@ -4,6 +4,7 @@ import java.util.List;
 
 import beast.base.core.Description;
 import beast.base.core.Input;
+import beast.base.core.Log;
 import beast.base.evolution.alignment.Sequence;
 import beast.base.evolution.datatype.DataType;
 import beast.base.evolution.tree.Node;
@@ -12,59 +13,69 @@ import beast.base.evolution.tree.Tree;
 @Description("Tree-likelihood that allows site specific root frequencies")
 public class TreeLikelihood extends beast.base.evolution.likelihood.TreeLikelihood {
 
-	final public Input<Sequence> rootSequenceInput = new Input<>("rootfreqs", 
+	final public Input<Sequence> rootFrequenciesSequenceInput = new Input<>("rootfreqseq", 
 			  "If defined, specifies site specific root frequencies instead of uniform root frequencies. "
 			+ "If it is a standard sequence, root frequencies will be set at 1 for the observed value in the sequence "
 			+ "(or uniform if an ambiguous value) and all other frequencies will be set at 0. "
 			+ "If the sequence is uncertain, each site represents a root frequencies distribution over all states.");
 
-	private double [][] rootFrequencies;
+	private double [][] rootFrequenciesSequence;
 	private int siteCount, stateCount;
 
 
 	@Override
 	public void initAndValidate() {
+		String javaOnly = System.getProperty("java.only");
+		if (javaOnly == null) {
+			if (rootFrequenciesInput.get() != null || rootFrequenciesSequenceInput.get() != null) {
+				System.setProperty("java.only", "true");
+				Log.warning("Switching off BEAGLE to facilitate custom root frequencies");
+			}
+		}
 		super.initAndValidate();
+		if (javaOnly == null) {
+			System.clearProperty("java.only");
+		}
 		
 		
-		if (rootSequenceInput.get() != null) { 
+		if (rootFrequenciesSequenceInput.get() != null) { 
 			initRootFrequencies();
 			
 			// sanity check
-			if (siteCount != rootFrequencies.length) {
-				throw new IllegalArgumentException("root sequence length differs from alignment length");
+			if (siteCount != rootFrequenciesSequence.length) {
+				throw new IllegalArgumentException("root sequence length (" + rootFrequenciesSequence.length + ") differs from alignment length("+ siteCount + ")");
 			}
 			
 			// 
 			patternLogLikelihoods = new double[siteCount];
 
 		} else {
-			rootFrequencies = null;
+			rootFrequenciesSequence = null;
 		}
 	}
 	
 	
 
 	private void initRootFrequencies() {
-		Sequence seq = rootSequenceInput.get();
+		Sequence seq = rootFrequenciesSequenceInput.get();
 		stateCount = seq.totalCountInput.get();
 		siteCount = dataInput.get().getSiteCount();
 
 		// deal with uncertain root sequence first
-		if (seq.uncertainInput.get()) {
-			rootFrequencies = seq.getLikelihoods();
+		if (seq.uncertainInput.get() != null && seq.uncertainInput.get()) {
+			rootFrequenciesSequence = seq.getLikelihoods();
 			return;
 		}
 		
 		// it is an ordinairy sequence, not an uncertain one
 		// todo: test for ambiguous codes
-		rootFrequencies = new double[siteCount][stateCount];
+		rootFrequenciesSequence = new double[siteCount][stateCount];
 		DataType dataType = dataInput.get().getDataType();
 		List<Integer> values = seq.getSequence(dataType);
 		for (int i = 0; i < siteCount; i++) {
 			int [] state = dataType.getStatesForCode(values.get(i));
 			for (int j : state) {
-				rootFrequencies[i][j] = 1.0/state.length;
+				rootFrequenciesSequence[i][j] = 1.0/state.length;
 			}	
 		}
 	}
@@ -74,7 +85,7 @@ public class TreeLikelihood extends beast.base.evolution.likelihood.TreeLikeliho
 	public double calculateLogP() {
         if (beagle != null) {
             logP = beagle.calculateLogP();
-            if (rootFrequencies != null) {
+            if (rootFrequenciesSequence != null) {
             	logP = recalculateBeagleLogPWithRootFrequences();
             }
             return logP;
@@ -92,11 +103,11 @@ public class TreeLikelihood extends beast.base.evolution.likelihood.TreeLikeliho
             double sum = 0.0;
             for (int i = 0; i < stateCount; i++) {
 
-                sum += rootFrequencies[k][i] * rootpartials[v];
+                sum += rootFrequenciesSequence[k][i] * rootpartials[v];
                 v++;
             }
             // TODO: deal with scaling           
-            patternLogLikelihoods[k] = Math.log(sum) + beagle.getLogScalingFactor(j);
+            patternLogLikelihoods[k] = Math.log(sum);// + beagle.getLogScalingFactor(j);
         }
 		calcLogP();
 		return logP;
@@ -104,7 +115,7 @@ public class TreeLikelihood extends beast.base.evolution.likelihood.TreeLikeliho
 
 	
     protected void calcLogP() {
-    	if (rootFrequencies != null) {
+    	if (rootFrequenciesSequence != null) {
             logP = 0.0;
             for (int i = 0; i < siteCount; i++) {
                 logP += patternLogLikelihoods[i];
@@ -198,9 +209,9 @@ public class TreeLikelihood extends beast.base.evolution.likelihood.TreeLikeliho
                         }
                     }
 
-                    if (this.rootFrequencies != null) {
+                    if (this.rootFrequenciesSequence != null) {
                     	// use site specific root frequencies
-                    	calculateLogLikelihoods(m_fRootPartials, this.rootFrequencies, patternLogLikelihoods);
+                    	calculateLogLikelihoods(m_fRootPartials, this.rootFrequenciesSequence, patternLogLikelihoods);
                     } else {
                     	double[] rootFrequencies = substitutionModel.getFrequencies();
                     	if (rootFrequenciesInput.get() != null) {

@@ -28,6 +28,7 @@ import beast.base.inference.State;
 public class ThreadedTreeLikelihood extends GenericTreeLikelihood {
 	
     final public Input<Boolean> useAmbiguitiesInput = new Input<>("useAmbiguities", "flag to indicate leafs that sites containing ambiguous states should be handled instead of ignored (the default)", false);
+    final public Input<Boolean> useTipLikelihoods = new Input<>("useTipLikelihoods", "flag to indicate that partial likelihoods are provided at the tips", false);
     
     final public Input<Integer> maxNrOfThreadsInput = new Input<>("threads","maximum number of threads to use, if less than 1 the number of threads in BeastMCMC is used (default -1)", -1);
 
@@ -38,13 +39,12 @@ public class ThreadedTreeLikelihood extends GenericTreeLikelihood {
     		+ "two thirds. With 3 threads, it is interpreted as '1 2 1' = 25%, 50%, 25% and with 7 threads it is "
     		+ "'1 2 1 2 1 2 1' = 10% 20% 10% 20% 10% 20% 10%. If not specified, all threads get the same proportion of patterns.");
     
-    enum Scaling {none, always, _default};
-    final public Input<Scaling> scalingInput = new Input<>("scaling", "type of scaling to use, one of " + Arrays.toString(Scaling.values()) + ". If not specified, the -beagle_scaling flag is used.", Scaling._default, Scaling.values());
+    final public Input<TreeLikelihood.Scaling> scalingInput = new Input<>("scaling", "type of scaling to use, one of " + Arrays.toString(TreeLikelihood.Scaling.values()) + ". If not specified, the -beagle_scaling flag is used.", TreeLikelihood.Scaling._default, TreeLikelihood.Scaling.values());
     
     final public Input<Frequencies> rootFrequenciesInput =
             new Input<>("rootFrequencies", "prior state frequencies at root, optional", Input.Validate.OPTIONAL);
 
-    final public Input<Sequence> rootSequenceInput = new Input<>("rootfreqs", 
+    final public Input<Sequence> rootFrequenciesSequenceInput = new Input<>("rootfreqseq", 
 			  "If defined, specifies site specific root frequencies instead of uniform root frequencies. "
 			+ "If it is a standard sequence, root frequencies will be set at 1 for the observed value in the sequence "
 			+ "(or uniform if an ambiguous value) and all other frequencies will be set at 0. "
@@ -114,9 +114,10 @@ public class ThreadedTreeLikelihood extends GenericTreeLikelihood {
     				"siteModel", siteModelInput.get(), 
     				"branchRateModel", branchRateModelInput.get(), 
     				"useAmbiguities", useAmbiguitiesInput.get(),
+    				"useTipLikelihoods", useTipLikelihoods.get(),
     				"rootFrequencies", rootFrequenciesInput.get(),
 					"scaling" , scalingInput.get() + "",
-					"rootfreqs", rootFrequenciesInput.get()
+					"rootfreqseq", rootFrequenciesSequenceInput.get()
     				);
     		treelikelihood[0].getOutputs().add(this);
     		likelihoodsInput.get().add(treelikelihood[0]);
@@ -152,8 +153,9 @@ public class ThreadedTreeLikelihood extends GenericTreeLikelihood {
         				"branchRateModel", duplicate(branchRateModelInput.get(), i), 
         				"rootFrequencies", rootFrequenciesInput.get(),
         				"useAmbiguities", useAmbiguitiesInput.get(),
+        				"useTipLikelihoods", useTipLikelihoods.get(),
                     	"scaling" , scalingInput.get() + "",
-    					"rootfreqs", rootFrequenciesInput.get()
+    					"rootfreqseq", rootFrequenciesSequenceInput.get()
         				);
         		
         		likelihoodCallers.add(new TreeLikelihoodCaller(treelikelihood[i], i));
