@@ -1,0 +1,10 @@
+<package name='rootfreqs' version='0.0.1'>
+        <depends on='BEAST.base' atleast='2.7.3'/>
+        <depends on='BEAST.app' atleast='2.7.3'/>
+
+   <service type="beast.base.core.BEASTInterface">
+        <provider classname="rootfreqs.TreeLikelihood"/>
+        <provider classname="rootfreqs.ThreadedTreeLikelihood"/>
+    </service>
+
+</package>
