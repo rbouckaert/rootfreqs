@@ -2,11 +2,13 @@ package rootfreqs;
 
 import java.util.List;
 
+import beagle.Beagle;
 import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.core.Log;
 import beast.base.evolution.alignment.Sequence;
 import beast.base.evolution.datatype.DataType;
+import beast.base.evolution.sitemodel.SiteModelInterface;
 import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.Tree;
 
@@ -20,7 +22,7 @@ public class TreeLikelihood extends beast.base.evolution.likelihood.TreeLikeliho
 			+ "If the sequence is uncertain, each site represents a root frequencies distribution over all states.");
 
 	private double [][] rootFrequenciesSequence;
-	private int siteCount, stateCount;
+	private int siteCount, stateCount, categoryCount, patternCount;
 
 
 	@Override
@@ -28,8 +30,10 @@ public class TreeLikelihood extends beast.base.evolution.likelihood.TreeLikeliho
 		String javaOnly = System.getProperty("java.only");
 		if (javaOnly == null) {
 			if (rootFrequenciesInput.get() != null || rootFrequenciesSequenceInput.get() != null) {
-				System.setProperty("java.only", "true");
-				Log.warning("Switching off BEAGLE to facilitate custom root frequencies");
+				if (scaling.get() != Scaling.none) {
+					System.setProperty("java.only", "true");
+					Log.warning("Switching off BEAGLE to facilitate custom root frequencies");
+				}
 			}
 		}
 		super.initAndValidate();
@@ -60,6 +64,11 @@ public class TreeLikelihood extends beast.base.evolution.likelihood.TreeLikeliho
 		Sequence seq = rootFrequenciesSequenceInput.get();
 		stateCount = seq.totalCountInput.get();
 		siteCount = dataInput.get().getSiteCount();
+		patternCount = dataInput.get().getPatternCount();
+		categoryCount = ((SiteModelInterface.Base)siteModelInput.get()).getCategoryCount();
+		if (categoryCount <= 0) {
+			categoryCount = 1;
+		}
 
 		// deal with uncertain root sequence first
 		if (seq.uncertainInput.get() != null && seq.uncertainInput.get()) {
@@ -95,8 +104,32 @@ public class TreeLikelihood extends beast.base.evolution.likelihood.TreeLikeliho
 	}	
 
 
+	private double [] rootpartials2 = null;
+	private double [] rootpartials = null;
 	private double recalculateBeagleLogPWithRootFrequences() {
-		double [] rootpartials = beagle.getRootPartials();
+		if (rootpartials == null) {
+			rootpartials = new double[patternCount * stateCount];
+			if (categoryCount > 1) {
+				rootpartials2 = new double[patternCount * stateCount * categoryCount];
+			}
+		} else if (rootpartials.length != patternCount * stateCount) {
+			rootpartials = new double[patternCount * stateCount];
+			if (categoryCount > 1) {
+				rootpartials2 = new double[patternCount * stateCount * categoryCount];
+			}
+		}
+		int number = treeInput.get().getRoot().getNr();
+		int node = beagle.getPartialBufferHelper().getOffsetIndex(number);
+		if (categoryCount <= 1) {
+			beagle.getBeagle().getPartials(node, Beagle.NONE, rootpartials);
+		} else {
+			beagle.getBeagle().getPartials(node, Beagle.NONE, rootpartials2);
+			// integrate categories first
+            final double[] proportions = ((SiteModelInterface.Base)siteModelInput.get()).getCategoryProportions(treeInput.get().getRoot());
+            calculateIntegratePartials(rootpartials2, proportions, rootpartials);
+		}
+		
+		
         for (int k = 0; k < siteCount; k++) {
         	int j = dataInput.get().getPatternIndex(k);
         	int v = j * stateCount;
@@ -113,6 +146,36 @@ public class TreeLikelihood extends beast.base.evolution.likelihood.TreeLikeliho
 		return logP;
 	}
 
+	
+	protected void calculateIntegratePartials(double[] inPartials, double[] proportions, double[] outPartials) {
+
+        int u = 0;
+        int v = 0;
+        for (int k = 0; k < patternCount; k++) {
+
+            for (int i = 0; i < stateCount; i++) {
+
+                outPartials[u] = inPartials[v] * proportions[0];
+                u++;
+                v++;
+            }
+        }
+
+
+        for (int l = 1; l < categoryCount; l++) {
+            u = 0;
+
+            for (int k = 0; k < patternCount; k++) {
+
+                for (int i = 0; i < stateCount; i++) {
+
+                    outPartials[u] += inPartials[v] * proportions[l];
+                    u++;
+                    v++;
+                }
+            }
+        }
+    }
 	
     protected void calcLogP() {
     	if (rootFrequenciesSequence != null) {
