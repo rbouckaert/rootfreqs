@@ -28,22 +28,16 @@ public class TreeLikelihood extends beast.base.evolution.likelihood.TreeLikeliho
 
 	@Override
 	public void initAndValidate() {
-//		String javaOnly = System.getProperty("java.only");
-//		if (javaOnly == null) {
-//			if (rootFrequenciesInput.get() != null || rootFrequenciesSequenceInput.get() != null) {
-//				if (scaling.get() != Scaling.none) {
-//					System.setProperty("java.only", "true");
-//					Log.warning("Switching off BEAGLE to facilitate custom root frequencies");
-//				}
-//			}
-//		}
 		super.initAndValidate();
-//		if (javaOnly == null) {
-//			System.clearProperty("java.only");
-//		}
-		
-		
-		if (rootFrequenciesSequenceInput.get() != null) { 
+			
+		if (rootFrequenciesSequenceInput.get() != null) {
+			
+			// sanity check
+			if (rootFrequenciesInput.get() != null) {
+				throw new IllegalArgumentException("Either rootFrequencies or rootfreqseq can be specified, but not both");
+			}
+			
+			
 			initRootFrequencies();
 			
 			// sanity check
@@ -51,7 +45,6 @@ public class TreeLikelihood extends beast.base.evolution.likelihood.TreeLikeliho
 				throw new IllegalArgumentException("root sequence length (" + rootFrequenciesSequence.length + ") differs from alignment length("+ siteCount + ")");
 			}
 			
-			// 
 			patternLogLikelihoods = new double[siteCount];
 			m_siteModel = (Base) siteModelInput.get();
 			substitutionModel = m_siteModel.getSubstitutionModel();

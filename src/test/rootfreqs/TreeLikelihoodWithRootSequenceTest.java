@@ -62,10 +62,7 @@ public class TreeLikelihoodWithRootSequenceTest {
         likelihood.initByName("data", data, "tree", tree, "siteModel", siteModel, "rootFrequencies", freqs);
         double logP = 0;
         logP = likelihood.calculateLogP();
-        // this fails for BeagelTreeLikelihoodTest,
-        // since the rootFrequencies input is not implemented
-        // so let this pass
-//      assertEquals(logP, logP0, BEASTTestCase.PRECISION);
+        assertEquals(logP, logP0, BEASTTestCase.PRECISION);
 
         // test with rootfreqseq input, normal sequence
         Sequence seq = new Sequence();
