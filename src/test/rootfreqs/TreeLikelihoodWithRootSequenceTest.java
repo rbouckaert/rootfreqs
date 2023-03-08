@@ -79,6 +79,7 @@ public class TreeLikelihoodWithRootSequenceTest {
         likelihood = newTreeLikelihood();
         likelihood.initByName("data", data, "tree", tree, "siteModel", siteModel, "rootfreqseq", seq, "scaling", "always");
         logP = likelihood.calculateLogP();
+        assertEquals(logP, logP0, BEASTTestCase.PRECISION);
         
         
         
@@ -94,6 +95,7 @@ public class TreeLikelihoodWithRootSequenceTest {
         likelihood = newTreeLikelihood();
         likelihood.initByName("data", data, "tree", tree, "siteModel", siteModel, "rootfreqseq", seq, "scaling", "always");
         logP = likelihood.calculateLogP();
+        assertEquals(logP, logP0, BEASTTestCase.PRECISION);
     }
 
     
@@ -217,7 +219,7 @@ public class TreeLikelihoodWithRootSequenceTest {
         		"shape", "1.0",
         		"proportionInvariant", "0.25",
         		"substModel", JC);
-        TODO: check there are constant sites in the alignment
+        // NB: there are constant sites in the alignment
         double logP0 = -20.203302531716012;
         testLikelihood3(siteModel, logP0);
     }
