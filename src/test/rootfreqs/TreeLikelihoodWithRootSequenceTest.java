@@ -65,7 +65,7 @@ public class TreeLikelihoodWithRootSequenceTest {
         // this fails for BeagelTreeLikelihoodTest,
         // since the rootFrequencies input is not implemented
         // so let this pass
-        // assertEquals(logP, logP0, BEASTTestCase.PRECISION);
+//      assertEquals(logP, logP0, BEASTTestCase.PRECISION);
 
         // test with rootfreqseq input, normal sequence
         Sequence seq = new Sequence();
@@ -74,6 +74,13 @@ public class TreeLikelihoodWithRootSequenceTest {
         likelihood.initByName("data", data, "tree", tree, "siteModel", siteModel, "rootfreqseq", seq);
         logP = likelihood.calculateLogP();
         assertEquals(logP, logP0, BEASTTestCase.PRECISION);
+
+        // test with forced scaling
+        likelihood = newTreeLikelihood();
+        likelihood.initByName("data", data, "tree", tree, "siteModel", siteModel, "rootfreqseq", seq, "scaling", "always");
+        logP = likelihood.calculateLogP();
+        
+        
         
         // test with rootfreqseq input, uncertain sequence
         seq = new Sequence();
@@ -82,6 +89,11 @@ public class TreeLikelihoodWithRootSequenceTest {
         likelihood.initByName("data", data, "tree", tree, "siteModel", siteModel, "rootfreqseq", seq);
         logP = likelihood.calculateLogP();
         assertEquals(logP, logP0, BEASTTestCase.PRECISION);
+
+        // test with forced scaling
+        likelihood = newTreeLikelihood();
+        likelihood.initByName("data", data, "tree", tree, "siteModel", siteModel, "rootfreqseq", seq, "scaling", "always");
+        logP = likelihood.calculateLogP();
     }
 
     

@@ -9,6 +9,7 @@ import beast.base.core.Log;
 import beast.base.evolution.alignment.Sequence;
 import beast.base.evolution.datatype.DataType;
 import beast.base.evolution.sitemodel.SiteModelInterface;
+import beast.base.evolution.sitemodel.SiteModelInterface.Base;
 import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.Tree;
 
@@ -27,19 +28,19 @@ public class TreeLikelihood extends beast.base.evolution.likelihood.TreeLikeliho
 
 	@Override
 	public void initAndValidate() {
-		String javaOnly = System.getProperty("java.only");
-		if (javaOnly == null) {
-			if (rootFrequenciesInput.get() != null || rootFrequenciesSequenceInput.get() != null) {
-				if (scaling.get() != Scaling.none) {
-					System.setProperty("java.only", "true");
-					Log.warning("Switching off BEAGLE to facilitate custom root frequencies");
-				}
-			}
-		}
+//		String javaOnly = System.getProperty("java.only");
+//		if (javaOnly == null) {
+//			if (rootFrequenciesInput.get() != null || rootFrequenciesSequenceInput.get() != null) {
+//				if (scaling.get() != Scaling.none) {
+//					System.setProperty("java.only", "true");
+//					Log.warning("Switching off BEAGLE to facilitate custom root frequencies");
+//				}
+//			}
+//		}
 		super.initAndValidate();
-		if (javaOnly == null) {
-			System.clearProperty("java.only");
-		}
+//		if (javaOnly == null) {
+//			System.clearProperty("java.only");
+//		}
 		
 		
 		if (rootFrequenciesSequenceInput.get() != null) { 
@@ -52,6 +53,8 @@ public class TreeLikelihood extends beast.base.evolution.likelihood.TreeLikeliho
 			
 			// 
 			patternLogLikelihoods = new double[siteCount];
+			m_siteModel = (Base) siteModelInput.get();
+			substitutionModel = m_siteModel.getSubstitutionModel();
 
 		} else {
 			rootFrequenciesSequence = null;
@@ -60,7 +63,7 @@ public class TreeLikelihood extends beast.base.evolution.likelihood.TreeLikeliho
 	
 	
 
-	private void initRootFrequencies() {
+	protected void initRootFrequencies() {
 		Sequence seq = rootFrequenciesSequenceInput.get();
 		stateCount = seq.totalCountInput.get();
 		siteCount = dataInput.get().getSiteCount();
@@ -118,6 +121,7 @@ public class TreeLikelihood extends beast.base.evolution.likelihood.TreeLikeliho
 				rootpartials2 = new double[patternCount * stateCount * categoryCount];
 			}
 		}
+				
 		int number = treeInput.get().getRoot().getNr();
 		int node = beagle.getPartialBufferHelper().getOffsetIndex(number);
 		if (categoryCount <= 1) {
@@ -129,6 +133,18 @@ public class TreeLikelihood extends beast.base.evolution.likelihood.TreeLikeliho
             calculateIntegratePartials(rootpartials2, proportions, rootpartials);
 		}
 		
+		double [] beaglePatternLogLikelihoods = beagle.getPatternLogLikelihoods();
+		double [] scaleFactor = new double[patternCount];
+		double [] freqs = substitutionModel.getFrequencies();
+        int u = 0;
+		for (int i = 0; i < patternCount; i++) {
+            double sum = 0.0;
+            for (int j = 0; j < stateCount; j++) {
+                sum += freqs[j] * rootpartials[u];
+                u++;
+            }
+            scaleFactor[i] = beaglePatternLogLikelihoods[i] - Math.log(sum);
+		}
 		
         for (int k = 0; k < siteCount; k++) {
         	int j = dataInput.get().getPatternIndex(k);
@@ -139,8 +155,7 @@ public class TreeLikelihood extends beast.base.evolution.likelihood.TreeLikeliho
                 sum += rootFrequenciesSequence[k][i] * rootpartials[v];
                 v++;
             }
-            // TODO: deal with scaling           
-            patternLogLikelihoods[k] = Math.log(sum);// + beagle.getLogScalingFactor(j);
+            patternLogLikelihoods[k] = Math.log(sum) + scaleFactor[j];
         }
 		calcLogP();
 		return logP;
