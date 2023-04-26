@@ -19,7 +19,8 @@
 	<property name="srcBeast2" location="${beast2path}/src" />
 	<property name="beast2classpath" location="${beast2path}/build" />
     <property name="beastappclasspath" location="../BeastFX/build" />
- 	<property name="Add_on_dir" value="${release_dir}/add-on" />
+	<property name="phyloncoclasspath" location="../beast-phylonco/phylonco-beast/build/classes/java/main" />
+	<property name="Add_on_dir" value="${release_dir}/add-on" />
 
     <import file="${beast2path}/build.xml" />
 
@@ -35,6 +36,7 @@
 		<fileset dir="${beast2path}/lib/junit" includes="junit-platform-console-standalone-1.8.2.jar"/>
         <pathelement path="${beast2classpath}"/>
         <pathelement path="${beastappclasspath}"/>
+		<pathelement path="${phyloncoclasspath}"/>
   	</path>
 
 	<!-- start -->
