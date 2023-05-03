@@ -13,6 +13,7 @@ import beast.base.evolution.substitutionmodel.Frequencies;
 import beast.base.evolution.substitutionmodel.JukesCantor;
 import beast.base.evolution.tree.Tree;
 import rootfreqs.TreeLikelihood;
+
 import test.beast.BEASTTestCase;
 import test.beast.evolution.alignment.UncertainAlignmentTest;
 

@@ -1,9 +1,9 @@
 
-package test.rootfreqs;
+package rootfreqs;
 
 import beast.base.evolution.likelihood.GenericTreeLikelihood;
 
-public class ThreadedTreeLikelihoodWithRootFreqsTest extends TreeLikelihoodWithRootFreqsTest {
+public class ThreadedTreeLikelihoodWithRootFreqsTest extends rootfreqs.TreeLikelihoodWithRootFreqsTest {
 
 	@Override
 	protected GenericTreeLikelihood newTreeLikelihood() {
