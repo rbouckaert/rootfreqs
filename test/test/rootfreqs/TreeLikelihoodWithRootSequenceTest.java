@@ -295,7 +295,7 @@ public class TreeLikelihoodWithRootSequenceTest {
     // taxaA, AAAAAAGGGGGGGG
     // taxaB, CCCCCCTTTTTTTT
     // taxaC, TTTTTTGGGGGGGG
-    // root,  AAAAGGGGGGTTTT
+    // root,  AAAAAAGGGGTTTT
     //
     // compressed as weighted alignment
     // weight 6,4,4
@@ -305,7 +305,7 @@ public class TreeLikelihoodWithRootSequenceTest {
     // root,  A,G,T
     @Test
     public void testRootFreqsAlignmentWeightsFull() throws Exception {
-        // test expanded full alignment without weights
+        // test expanded full alignment without weights no root sequence
         Alignment data = getFullAlignment();
         data.initAndValidate();
 
@@ -338,9 +338,9 @@ public class TreeLikelihoodWithRootSequenceTest {
 
         // test with full alignment and full root sequence
         Sequence rootSeq = new Sequence();
-        rootSeq.initByName("value", "AAAAGGGGGGTTTT", "taxon", "root", "totalcount", 4);
+        rootSeq.initByName("value", "AAAAAAGGGGTTTT", "taxon", "root", "totalcount", 4);
 
-        double logP2Expected = -62.242790239059964;
+        double logP2Expected = -62.242790213363946;
 
         GenericTreeLikelihood likelihoodWithRoot = newTreeLikelihood();
         likelihoodWithRoot.initByName("data", data,
@@ -352,13 +352,13 @@ public class TreeLikelihoodWithRootSequenceTest {
         System.out.println("logP2 " + logP2);
         assertEquals(logP2Expected, logP2, BEASTTestCase.PRECISION);
 
-        // test with weighted alignment and full root sequence
+        // test with weighted alignment and compressed root sequence
         Alignment data3 = getWeightedAlignment();
         data3.initAndValidate();
         GenericTreeLikelihood likelihoodWithRootWeightedAlignment = newTreeLikelihood();
 
         Sequence rootSeq3 = new Sequence();
-        rootSeq3.initByName("value", "AAAAGGGGGGTTTT", "taxon", "root", "totalcount", 4);
+        rootSeq3.initByName("value", "AGT", "taxon", "root", "totalcount", 4);
 
         likelihoodWithRootWeightedAlignment.initByName("data", data3,
                 "tree", treeParser,
