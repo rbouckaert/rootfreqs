@@ -19,7 +19,10 @@ import test.beast.BEASTTestCase;
 public class TreeLikelihoodWithRootSequenceTest {
 
     protected GenericTreeLikelihood newTreeLikelihood() {
-//    	System.setProperty("java.only","true");
+        // test Java implementation
+    	System.setProperty("java.only","true");
+        // to run tests with Beagle add Beagle lib path to java library path
+        // -Djava.library.path=/usr/local/lib
         return new rootfreqs.TreeLikelihood();
     }
 
