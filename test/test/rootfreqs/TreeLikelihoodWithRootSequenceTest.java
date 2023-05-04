@@ -259,7 +259,6 @@ public class TreeLikelihoodWithRootSequenceTest {
     // taxaA, A,G,G
     // taxaB, C,T,T
     // taxaC, T,G,G
-    // root,  A,G,T
     @Test
     public void testAlignmentWeightsNoRoot() throws Exception {
         // test alignment with weights no root sequence
@@ -298,16 +297,8 @@ public class TreeLikelihoodWithRootSequenceTest {
     // taxaA, AAAAAAGGGGGGGG
     // taxaB, CCCCCCTTTTTTTT
     // taxaC, TTTTTTGGGGGGGG
-    // root,  AAAAAAGGGGTTTT
-    //
-    // compressed as weighted alignment
-    // weight 6,4,4
-    // taxaA, A,G,G
-    // taxaB, C,T,T
-    // taxaC, T,G,G
-    // root,  A,G,T
     @Test
-    public void testRootFreqsAlignmentWeightsFull() throws Exception {
+    public void testRootFreqsAlignmentFull() throws Exception {
         // test expanded full alignment without weights no root sequence
         Alignment data = getFullAlignment();
         data.initAndValidate();
@@ -324,30 +315,62 @@ public class TreeLikelihoodWithRootSequenceTest {
         double logPExpected = -62.25191375785914;
 
         String newick = "((taxaA:5.0,taxaB:4.0):6.0,taxaC:3.0):0.0;";
-        TreeParser treeParser = new TreeParser();
-        treeParser.initByName("IsLabelledNewick", true,
+        TreeParser tree = new TreeParser();
+        tree.initByName("IsLabelledNewick", true,
                 "newick", newick,
                 "adjustTipHeights", false);
 
         // test with default root frequencies from site model, which for JC96 is [1/4,1/4,1/4,1/4]
         GenericTreeLikelihood likelihood = newTreeLikelihood();
         likelihood.initByName("data", data,
-                "tree", treeParser,
+                "tree", tree,
                 "siteModel", siteModel);
         double logP = 0;
         logP = likelihood.calculateLogP();
         System.out.println("logP " + logP);
         assertEquals(logPExpected, logP, BEASTTestCase.PRECISION);
+    }
+
+    // compressed as weighted alignment
+    // weight 6,4,4
+    // taxaA, A,G,G
+    // taxaB, C,T,T
+    // taxaC, T,G,G
+    // root,  A,G,G
+
+    /**
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testRootFreqsAlignmentWeightsRoot() throws Exception {
+        Alignment data = getFullAlignment();
+        data.initAndValidate();
+
+        String newick = "((taxaA:5.0,taxaB:4.0):6.0,taxaC:3.0):0.0;";
+        TreeParser tree = new TreeParser();
+        tree.initByName("IsLabelledNewick", true,
+                "newick", newick,
+                "adjustTipHeights", false);
+
+        JukesCantor JC = new JukesCantor();
+        JC.initAndValidate();
+        SiteModel siteModel = new SiteModel();
+        siteModel.initByName("mutationRate", "1.0",
+                "gammaCategoryCount", 1,
+                "shape", "1.0",
+                "proportionInvariant", "0.25",
+                "substModel", JC);
 
         // test with full alignment and full root sequence
         Sequence rootSeq = new Sequence();
-        rootSeq.initByName("value", "AAAAAAGGGGTTTT", "taxon", "root", "totalcount", 4);
+        rootSeq.initByName("value", "AAAAAAGGGGGGGG", "taxon", "root", "totalcount", 4);
 
-        double logP2Expected = -62.242790213363946;
+        double logP2Expected = -62.16591205361204;
 
         GenericTreeLikelihood likelihoodWithRoot = newTreeLikelihood();
         likelihoodWithRoot.initByName("data", data,
-                "tree", treeParser,
+                "tree", tree,
                 "siteModel", siteModel,
                 "rootfreqseq", rootSeq);
         double logP2 = 0.0;
@@ -361,10 +384,10 @@ public class TreeLikelihoodWithRootSequenceTest {
         GenericTreeLikelihood likelihoodWithRootWeightedAlignment = newTreeLikelihood();
 
         Sequence rootSeq3 = new Sequence();
-        rootSeq3.initByName("value", "AGT", "taxon", "root", "totalcount", 4);
+        rootSeq3.initByName("value", "AGG", "taxon", "root", "totalcount", 4);
 
         likelihoodWithRootWeightedAlignment.initByName("data", data3,
-                "tree", treeParser,
+                "tree", tree,
                 "siteModel", siteModel,
                 "rootfreqseq", rootSeq3);
 
@@ -372,8 +395,25 @@ public class TreeLikelihoodWithRootSequenceTest {
         logP3 = likelihoodWithRootWeightedAlignment.calculateLogP();
         System.out.println("logP3 " + logP3);
 
-        // full and compressed alignment/root should give the same likelihood
+        // full and compressed alignment and root should give the same likelihood
         assertEquals(logP2Expected, logP3, BEASTTestCase.PRECISION);
+
+    }
+
+    /**
+     * Test weighted alignment with root sequence produces same output as full alignment
+     *
+     * taxaA, AAAAAAGGGGGGGG
+     * taxaB, CCCCCCTTTTTTTT
+     * taxaC, TTTTTTGGGGGGGG
+     *
+     * root,  AAAAGGGGGGTTTT
+     *
+     * alignment patterns = 2
+     * alignment and root patterns = 3
+     */
+    @Test
+    public void testRootFreqsAlignmentWeightDiffPatterns() {
 
     }
      

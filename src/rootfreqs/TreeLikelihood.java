@@ -60,6 +60,7 @@ public class TreeLikelihood extends beast.base.evolution.likelihood.TreeLikeliho
 		Sequence seq = rootFrequenciesSequenceInput.get();
 		stateCount = seq.totalCountInput.get();
 		siteCount = dataInput.get().getSiteCount();
+        // account for alignment weights here
 		patternCount = dataInput.get().getPatternCount();
 		categoryCount = ((SiteModelInterface.Base)siteModelInput.get()).getCategoryCount();
 		if (categoryCount <= 0) {
@@ -109,6 +110,7 @@ public class TreeLikelihood extends beast.base.evolution.likelihood.TreeLikeliho
 				rootpartials2 = new double[patternCount * stateCount * categoryCount];
 			}
 		} else if (rootpartials.length != patternCount * stateCount) {
+            System.out.println("root partials not equal to num patterns " + rootpartials.length + " != " + (patternCount * stateCount));
 			rootpartials = new double[patternCount * stateCount];
 			if (categoryCount > 1) {
 				rootpartials2 = new double[patternCount * stateCount * categoryCount];
@@ -188,8 +190,17 @@ public class TreeLikelihood extends beast.base.evolution.likelihood.TreeLikeliho
     protected void calcLogP() {
     	if (rootFrequenciesSequence != null) {
             logP = 0.0;
-            for (int i = 0; i < siteCount; i++) {
-                logP += patternLogLikelihoods[i];
+
+            if (dataInput.get().siteWeightsInput.get() != null) {
+                // handle alignment with weights
+                for (int i = 0; i < dataInput.get().getPatternCount(); i++) {
+                    logP += patternLogLikelihoods[i] * dataInput.get().getPatternWeight(i);
+                }
+            } else {
+                // full alignment without weights
+                for (int i = 0; i < siteCount; i++) {
+                    logP += patternLogLikelihoods[i];
+                }
             }
             if (useAscertainedSitePatterns) {
                 // at this point, logP contains contributions of ascertained sites, which it should not have.
@@ -302,16 +313,31 @@ public class TreeLikelihood extends beast.base.evolution.likelihood.TreeLikeliho
 			double[] partials, 
 			double[][] rootFrequencies,
 			double[] outLogLikelihoods) {
-        for (int k = 0; k < siteCount; k++) {
-        	int j = dataInput.get().getPatternIndex(k);
-        	int v = j * stateCount;
-            double sum = 0.0;
-            for (int i = 0; i < stateCount; i++) {
 
-                sum += rootFrequencies[k][i] * partials[v];
-                v++;
+        if (dataInput.get().siteWeightsInput.get() != null) {
+            // handle site weights
+            int v = 0;
+            for (int k = 0; k < patternCount; k++) {
+                double sum = 0.0;
+                for (int i = 0; i < stateCount; i++) {
+                    sum += rootFrequencies[k][i] * partials[v];
+                    v++;
+                }
+                outLogLikelihoods[k] = Math.log(sum) + getLikelihoodCore().getLogScalingFactor(k);
             }
-            outLogLikelihoods[k] = Math.log(sum) + getLikelihoodCore().getLogScalingFactor(j);
+        } else {
+            // alignment and root are unweighted
+            for (int k = 0; k < siteCount; k++) {
+                int j = dataInput.get().getPatternIndex(k);
+                int v = j * stateCount;
+                double sum = 0.0;
+                for (int i = 0; i < stateCount; i++) {
+
+                    sum += rootFrequencies[k][i] * partials[v];
+                    v++;
+                }
+                outLogLikelihoods[k] = Math.log(sum) + getLikelihoodCore().getLogScalingFactor(j);
+            }
         }
 	}
 
