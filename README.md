@@ -14,5 +14,5 @@ The package should work with the following features:
 * ambiguous sites at tips and/or at root
 * uncertain sites at tips and/or at root
 * threaded likelihood calculation
-
+* with/without an error model at the tips
 
