@@ -220,8 +220,16 @@ public class TreeLikelihoodWithError extends beast.base.evolution.likelihood.Tre
     protected void calcLogP() {
         if (rootFrequenciesSequence != null) {
             logP = 0.0;
-            for (int i = 0; i < siteCount; i++) {
-                logP += patternLogLikelihoods[i];
+            if (dataInput.get().siteWeightsInput.get() != null) {
+                // handle alignment with weights
+                for (int i = 0; i < dataInput.get().getPatternCount(); i++) {
+                    logP += patternLogLikelihoods[i] * dataInput.get().getPatternWeight(i);
+                }
+            } else {
+                // full alignment without weights
+                for (int i = 0; i < siteCount; i++) {
+                    logP += patternLogLikelihoods[i];
+                }
             }
             if (useAscertainedSitePatterns) {
                 // at this point, logP contains contributions of ascertained sites, which it should not have.
