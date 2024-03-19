@@ -378,42 +378,25 @@ public class TreeLikelihoodWithRootSequenceTest {
         System.out.println("logP2 " + logP2);
         assertEquals(logP2Expected, logP2, BEASTTestCase.PRECISION);
 
-//        // test with weighted alignment and compressed root sequence
-//        Alignment data3 = getWeightedAlignment();
-//        data3.initAndValidate();
-//        GenericTreeLikelihood likelihoodWithRootWeightedAlignment = newTreeLikelihood();
-//
-//        Sequence rootSeq3 = new Sequence();
-//        rootSeq3.initByName("value", "AGG", "taxon", "root", "totalcount", 4);
-//
-//        likelihoodWithRootWeightedAlignment.initByName("data", data3,
-//                "tree", tree,
-//                "siteModel", siteModel,
-//                "rootfreqseq", rootSeq3);
-//
-//        double logP3 = 0.0;
-//        logP3 = likelihoodWithRootWeightedAlignment.calculateLogP();
-//        System.out.println("logP3 " + logP3);
-//
-//        // full and compressed alignment and root should give the same likelihood
-//        assertEquals(logP2Expected, logP3, BEASTTestCase.PRECISION);
+        // test with weighted alignment and compressed root sequence
+        Alignment data3 = getWeightedAlignment();
+        data3.initAndValidate();
+        GenericTreeLikelihood likelihoodWithRootWeightedAlignment = newTreeLikelihood();
 
-    }
+        Sequence rootSeq3 = new Sequence();
+        rootSeq3.initByName("value", "AGG", "taxon", "root", "totalcount", 4);
 
-    /**
-     * Test weighted alignment with root sequence produces same output as full alignment
-     *
-     * taxaA, AAAAAAGGGGGGGG
-     * taxaB, CCCCCCTTTTTTTT
-     * taxaC, TTTTTTGGGGGGGG
-     *
-     * root,  AAAAGGGGGGTTTT
-     *
-     * alignment patterns = 2
-     * alignment and root patterns = 3
-     */
-    @Test
-    public void testRootFreqsAlignmentWeightDiffPatterns() {
+        likelihoodWithRootWeightedAlignment.initByName("data", data3,
+                "tree", tree,
+                "siteModel", siteModel,
+                "rootfreqseq", rootSeq3);
+
+        double logP3 = 0.0;
+        logP3 = likelihoodWithRootWeightedAlignment.calculateLogP();
+        System.out.println("logP3 " + logP3);
+
+        // full and compressed alignment and root should give the same likelihood
+        assertEquals(logP2Expected, logP3, BEASTTestCase.PRECISION);
 
     }
      

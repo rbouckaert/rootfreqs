@@ -2,7 +2,7 @@ package test.rootfreqs;
 
 import beast.base.evolution.likelihood.GenericTreeLikelihood;
 
-public class BeagleThreadedTreeLikelihoodWithErrorTest extends BeagleTreeLikelihoodWithErrorTest{
+public class BeagleThreadedTreeLikelihoodWithErrorTest extends BeagleTreeLikelihoodWithErrorTest {
 
     @Override
     protected GenericTreeLikelihood newTreeLikelihood() {
