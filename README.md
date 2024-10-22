@@ -28,7 +28,8 @@ If you have not already done so, you can get BEAST 2 from [here](http://beast2.o
 
 To install rootfreqs, it is easiest to start BEAUti (a program that is part of BEAST), and select the menu `File/Manage packages`. A package manager dialog pops up, that looks something like this:
 
-![Package Manager](https://github.com/rbouckaert/rootfreqs/raw/master/doc/package_repos.png)
+![Package Manager](https://github.com/rbouckaert/rootfreqs/blob/main/doc/package_repos.png?raw=true)
+
 
 If the rootfreqs package is listed, just click on it to select it, and hit the `Install/Upgrade` button.
 
